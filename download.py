@@ -23,7 +23,7 @@ def tile_fname(dir, pos):
     return Path(dir, '%d-%d.png' % pos)
 
 
-def download_tile(tile):
+def download_tile(date_dir, tile, image_url, depth, size, date_str):
     x, y = tile
     file_name = tile_fname(date_dir, tile)
 
@@ -41,7 +41,7 @@ def download_tile(tile):
     tmp_fname.rename(file_name)
 
 
-def make_strip(date_dir, tiles, size, annotated=False):
+def make_strip(date_dir, tiles, size, x, annotated=False):
     if annotated:
         strip_type = 'annotated'
     else:
@@ -75,55 +75,60 @@ def make_strip(date_dir, tiles, size, annotated=False):
     tmp_strip_fname.rename(strip_fname)
 
 
-# depth can be: 4, 8, 16, 20
-# (according to https://habr.com/ru/sandbox/99937/)
-depth = 20
-size = 550
-image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
+def main():
+    # depth can be: 4, 8, 16, 20
+    # (according to https://habr.com/ru/sandbox/99937/)
+    depth = 20
+    size = 550
+    image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
+    create_annotated = True
 
+    target = (
+        (12, 5),
+        (17, 12)
+    )
+    print(f'tiles target: {target}')
 
-target = (
-    (12, 5),
-    (17, 12)
-)
-print(f'tiles target: {target}')
+    step = timedelta(minutes=10)
+    cur_date = datetime.fromisoformat('2020-01-29 00:00')
+    end_date = cur_date + timedelta(days=1)
 
-step = timedelta(minutes=10)
-cur_date = datetime.fromisoformat('2020-01-29 00:00')
-end_date = cur_date + timedelta(days=1)
+    base_dir = Path('cache', 'himawari8', str(depth), cur_date.strftime('%Y-%m-%d'))
+    base_dir.mkdir(parents=True, exist_ok=True)
 
-base_dir = Path('cache', 'himawari8', str(depth), cur_date.strftime('%Y-%m-%d'))
-base_dir.mkdir(parents=True, exist_ok=True)
+    while cur_date < end_date:
+        # for testing
+        if cur_date.hour != 6:
+            cur_date += step
+            continue
 
-while cur_date < end_date:
-    # for testing
-    if cur_date.hour != 6:
+        print(cur_date.strftime('time: %H:%M'))
+
+        date_str = cur_date.strftime('%Y/%m/%d/%H%M%S')
+
+        date_dir = Path(base_dir, cur_date.strftime('%H-%M'))
+        date_dir.mkdir(parents=True, exist_ok=True)
+
+        for x in range(depth):
+            tiles = []
+            for y in range(depth):
+                if len(target) > 0:
+                    if x < target[0][0] or y < target[0][1]:
+                        continue
+                    if x > target[1][0] or y > target[1][1]:
+                        continue
+
+                tile = (x, y)
+                tiles.append(tile)
+
+                download_tile(date_dir, tile, image_url, depth, size, date_str)
+
+            if len(tiles) > 0:
+                make_strip(date_dir, tiles, size, x)
+                if create_annotated:
+                    make_strip(date_dir, tiles, size, x, annotated=True)
+
         cur_date += step
-        continue
 
-    print(cur_date.strftime('time: %H:%M'))
 
-    date_str = cur_date.strftime('%Y/%m/%d/%H%M%S')
-
-    date_dir = Path(base_dir, cur_date.strftime('%H-%M'))
-    date_dir.mkdir(parents=True, exist_ok=True)
-
-    for x in range(depth):
-        tiles = []
-        for y in range(depth):
-            if len(target) > 0:
-                if x < target[0][0] or y < target[0][1]:
-                    continue
-                if x > target[1][0] or y > target[1][1]:
-                    continue
-
-            tile = (x, y)
-            tiles.append(tile)
-
-            download_tile(tile)
-
-        if len(tiles) > 0:
-            make_strip(date_dir, tiles, size)
-            make_strip(date_dir, tiles, size, annotated=True)
-
-    cur_date += step
+main()
