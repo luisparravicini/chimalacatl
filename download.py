@@ -1,6 +1,6 @@
 import urllib.request
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 
@@ -16,22 +16,30 @@ from pathlib import Path
 depth = 20
 size = 550
 image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
-date_format = "YYYY/DD/mm/HHMMSS"
 
 # time is (supposedly) gmt+8
 
 whitelist = (
-    (1, 1),
+    # (1, 1),
 )
 print(f'tiles whitelist: {whitelist}')
 
-for h in range(24):
-    d = datetime.fromisoformat('2020-01-28 %02d:00' % h)
+step = timedelta(minutes=10)
+cur_date = datetime.fromisoformat('2020-01-29 00:00')
+end_date = cur_date + timedelta(days=1)
 
-    base_dir = Path('cache', 'himawari8', d.strftime('%Y-%m-%d'), str(depth))
+print(cur_date, end_date)
+
+while cur_date < end_date:
+    # for testing
+    if cur_date.hour != 6:
+        cur_date += step
+        continue
+
+    base_dir = Path('cache', 'himawari8', cur_date.strftime('%Y-%m-%d'), str(depth))
     base_dir.mkdir(parents=True, exist_ok=True)
 
-    date = d.strftime('%Y/%m/%d/%H%M%S')
+    date_str = cur_date.strftime('%Y/%m/%d/%H%M%S')
 
     for x in range(depth):
         for y in range(depth):
@@ -44,11 +52,13 @@ for h in range(24):
                 print(f'tile ({x},{y}) cached, skipping download')
                 continue
 
-            url = image_url % (depth, size, date, y, x)
+            url = image_url % (depth, size, date_str, y, x)
             print(f'downloading from {url}')
 
             tmp_fname = file_name.with_suffix('.tmp')
-            # with urllib.request.urlopen(url) as response, open(tmp_fname, 'wb') as out_file:
-            #     shutil.copyfileobj(response, out_file)
+            with urllib.request.urlopen(url) as response, open(tmp_fname, 'wb') as out_file:
+                shutil.copyfileobj(response, out_file)
 
-            # tmp_fname.rename(file_name)
+            tmp_fname.rename(file_name)
+
+    cur_date += step
