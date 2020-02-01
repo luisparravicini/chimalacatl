@@ -28,16 +28,14 @@ step = timedelta(minutes=10)
 cur_date = datetime.fromisoformat('2020-01-29 00:00')
 end_date = cur_date + timedelta(days=1)
 
-print(cur_date, end_date)
+base_dir = Path('cache', 'himawari8', cur_date.strftime('%Y-%m-%d'), str(depth))
+base_dir.mkdir(parents=True, exist_ok=True)
 
 while cur_date < end_date:
     # for testing
     if cur_date.hour != 6:
         cur_date += step
         continue
-
-    base_dir = Path('cache', 'himawari8', cur_date.strftime('%Y-%m-%d'), str(depth))
-    base_dir.mkdir(parents=True, exist_ok=True)
 
     date_str = cur_date.strftime('%Y/%m/%d/%H%M%S')
 
