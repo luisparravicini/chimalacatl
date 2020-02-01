@@ -1,6 +1,6 @@
 import urllib.request
 import shutil
-import datetime
+from datetime import datetime
 from pathlib import Path
 
 
@@ -19,16 +19,26 @@ image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
 date_format = "YYYY/DD/mm/HHMMSS"
 
 # time is (supposedly) gmt+8
-h = 6
-date = '2020/01/01/%02d1000' % h
+d = datetime.fromisoformat('2020-01-07 06:00')
+
+base_dir = Path('cache', 'himawari8', d.strftime('%Y-%m-%d'), str(depth))
+base_dir.mkdir(parents=True, exist_ok=True)
+
+date = d.strftime('%Y/%m/%d/%H%M%S')
 
 for x in range(depth):
     for y in range(depth):
-        base_dir = Path('cache', 'himawari8', '2020-01-01', str(depth))
-        base_dir.mkdir(parents=True, exist_ok=True)
         file_name = Path(base_dir, '%d-%d.png' % (x, y))
 
         url = image_url % (depth, size, date, y, x)
         print(f'downloading from {url}')
-        with urllib.request.urlopen(url) as response, open(file_name, 'wb') as out_file:
+
+        if file_name.exists():
+            print('cached, skipping download')
+            continue
+
+        tmp_fname = file_name.with_suffix('.tmp')
+        with urllib.request.urlopen(url) as response, open(tmp_fname, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
+
+        tmp_fname.rename(file_name)
