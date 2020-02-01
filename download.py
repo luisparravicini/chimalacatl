@@ -31,7 +31,7 @@ step = timedelta(minutes=10)
 cur_date = datetime.fromisoformat('2020-01-29 00:00')
 end_date = cur_date + timedelta(days=1)
 
-base_dir = Path('cache', 'himawari8', cur_date.strftime('%Y-%m-%d'), str(depth))
+base_dir = Path('cache', 'himawari8', str(depth), cur_date.strftime('%Y-%m-%d'))
 base_dir.mkdir(parents=True, exist_ok=True)
 
 while cur_date < end_date:
@@ -40,21 +40,26 @@ while cur_date < end_date:
         cur_date += step
         continue
 
+    print(cur_date.strftime('time: %H:%M'))
+
     date_str = cur_date.strftime('%Y/%m/%d/%H%M%S')
+
+    date_dir = Path(base_dir, cur_date.strftime('%H-%M'))
+    date_dir.mkdir(parents=True, exist_ok=True)
 
     for x in range(depth):
         for y in range(depth):
             if len(whitelist) > 0 and (x, y) not in whitelist:
                 continue
 
-            file_name = Path(base_dir, '%d-%d.png' % (x, y))
+            file_name = Path(date_dir, '%d-%d.png' % (x, y))
 
             if file_name.exists():
-                print(f'tile ({x},{y}) cached, skipping download')
+                print(f'\t[{x},{y}] found cache')
                 continue
 
             url = image_url % (depth, size, date_str, y, x)
-            print(f'downloading from {url}')
+            print(f'\t[{x},{y}] downloading from {url}')
 
             tmp_fname = file_name.with_suffix('.tmp')
             with urllib.request.urlopen(url) as response, open(tmp_fname, 'wb') as out_file:
