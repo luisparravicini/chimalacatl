@@ -14,6 +14,9 @@ from PIL import Image, ImageDraw
 #
 # There's a json with the date of the latest image taken at:
 # http://himawari8-dl.nict.go.jp/himawari8/img/D531106/latest.json
+#
+# timezone used in date strings is (supposedly) gmt+8
+#
 
 
 def tile_fname(dir, pos):
@@ -53,15 +56,12 @@ def make_strip(date_dir, tiles, size, annotated=False):
     img = Image.new('RGB', (len(tiles) * size, size))
     if annotated:
         draw = ImageDraw.Draw(img)
-    for tile in tiles:
+    for index, tile in enumerate(tiles):
         tile_img = Image.open(tile_fname(date_dir, tile))
-        img.paste(
-            tile_img,
-            (tile[1] * size, 0)
-        )
+        img.paste(tile_img, (index * size, 0))
         if annotated:
             draw.rectangle(
-                ((tile[1] * size, 0), (tile[1] * size + size, size)),
+                ((index * size, 0), (index * size + size, size)),
                 width=2
             )
             offset = 50
@@ -81,12 +81,12 @@ depth = 20
 size = 550
 image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
 
-# time is (supposedly) gmt+8
 
-whitelist = (
-    # (1, 1),
+target = (
+    (12, 5),
+    (17, 12)
 )
-print(f'tiles whitelist: {whitelist}')
+print(f'tiles target: {target}')
 
 step = timedelta(minutes=10)
 cur_date = datetime.fromisoformat('2020-01-29 00:00')
@@ -111,14 +111,19 @@ while cur_date < end_date:
     for x in range(depth):
         tiles = []
         for y in range(depth):
-            if len(whitelist) > 0 and (x, y) not in whitelist:
-                continue
+            if len(target) > 0:
+                if x < target[0][0] or y < target[0][1]:
+                    continue
+                if x > target[1][0] or y > target[1][1]:
+                    continue
 
             tile = (x, y)
             tiles.append(tile)
+
             download_tile(tile)
 
-        make_strip(date_dir, tiles, size)
-        make_strip(date_dir, tiles, size, annotated=True)
+        if len(tiles) > 0:
+            make_strip(date_dir, tiles, size)
+            make_strip(date_dir, tiles, size, annotated=True)
 
     cur_date += step
