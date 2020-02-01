@@ -38,20 +38,38 @@ def download_tile(tile):
     tmp_fname.rename(file_name)
 
 
-def make_strip(date_dir, tiles):
-    strip_fname = Path(date_dir, 'strip_%02d.jpg' % x)
+def make_strip(date_dir, tiles, size, annotated=False):
+    if annotated:
+        strip_type = 'annotated'
+    else:
+        strip_type = ''
+
+    strip_fname = Path(date_dir, 'strip_%s_%02d.jpg' % (strip_type, x))
     if strip_fname.exists():
-        print('\tstrip file exists')
+        print(f'\t{strip_type} strip file exists')
         return
 
-    print(f'\tsaving strip ({len(tiles)} tiles)')
+    print(f'\tsaving {strip_type} strip ({len(tiles)} tiles)')
     img = Image.new('RGB', (len(tiles) * size, size))
+    if annotated:
+        draw = ImageDraw.Draw(img)
     for tile in tiles:
         tile_img = Image.open(tile_fname(date_dir, tile))
         img.paste(
             tile_img,
             (tile[1] * size, 0)
         )
+        if annotated:
+            draw.rectangle(
+                ((tile[1] * size, 0), (tile[1] * size + size, size)),
+                width=2
+            )
+            offset = 50
+            draw.text(
+                (tile[1] * size + offset, offset),
+                f'{tile[0]},{tile[1]}',
+                fill='white'
+            )
     tmp_strip_fname = strip_fname.with_suffix('.tmp')
     img.save(tmp_strip_fname, format='jpeg')
     tmp_strip_fname.rename(strip_fname)
@@ -100,7 +118,7 @@ while cur_date < end_date:
             tiles.append(tile)
             download_tile(tile)
 
-        make_strip(date_dir, tiles)
-
+        make_strip(date_dir, tiles, size)
+        make_strip(date_dir, tiles, size, annotated=True)
 
     cur_date += step
