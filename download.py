@@ -3,16 +3,19 @@ import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
-
-# url format from https://gist.github.com/FZambia/ca83c61beac90a15b4d6
+#
+# Downloads a whole day of Himawari 8 images at the specified depth.
+# Each tile is cached locally to avoid downloading it again between runs.
+#
+# The himawari 8 url format was obtained from
+# https://gist.github.com/FZambia/ca83c61beac90a15b4d6
 # and https://github.com/bitpeach/EarthLiveForMatlab/blob/master/README.md
-
-# json with latest image:
+#
+# There's a json with the date of the latest image taken at:
 # http://himawari8-dl.nict.go.jp/himawari8/img/D531106/latest.json
 
-# depath is: 4, 8, 16, 20
-# according to https://habr.com/ru/sandbox/99937/
-
+# depth can be: 4, 8, 16, 20
+# (according to https://habr.com/ru/sandbox/99937/)
 depth = 20
 size = 550
 image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
