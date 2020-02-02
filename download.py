@@ -32,7 +32,7 @@ class Downloader:
         file_name = self._tile_fname(tile)
 
         if file_name.exists():
-            self._log(f'[{x},{y}] found cache')
+            self._log(f'[{x},{y}] cached')
             return
 
         url = image_url % (depth, self.size, date_str, y, x)
@@ -159,4 +159,4 @@ class Downloader:
             self.cur_date += step
 
 
-Downloader(create_annotated=True, force_creation=True).run()
+Downloader(create_annotated=False, force_creation=False).run()
