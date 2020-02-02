@@ -41,7 +41,7 @@ def download_tile(date_dir, tile, image_url, depth, size, date_str):
     tmp_fname.rename(file_name)
 
 
-def make_strip(date_dir, tiles, size, x, annotated=False):
+def make_strip(date_dir, tiles, size, x, force_creation=False, annotated=False):
     if annotated:
         strip_type = 'annotated'
     else:
@@ -50,7 +50,10 @@ def make_strip(date_dir, tiles, size, x, annotated=False):
     strip_fname = Path(date_dir, 'strip_%s_%02d.jpg' % (strip_type, x))
     if strip_fname.exists():
         print(f'\t{strip_type} strip file exists')
-        return strip_fname
+        if force_creation:
+            print('\trecreating strip')
+        else:
+            return strip_fname
 
     print(f'\tsaving {strip_type} strip ({len(tiles)} tiles)')
     width = len(tiles) * size
@@ -78,11 +81,15 @@ def make_strip(date_dir, tiles, size, x, annotated=False):
     return strip_fname
 
 
-def create_target_image(date_dir, strips_paths, width, size):
-    image_fname = Path(date_dir, 'target.jpg')
+def make_target_image(date_dir, cur_date, strips_paths, width, size, force_creation=False):
+    dstr = cur_date.strftime('%Y%m%d%H%M%S')
+    image_fname = Path(date_dir, 'target-%s.jpg' % dstr)
     if image_fname.exists():
         print('\ttarget image file exists')
-        return
+        if force_creation:
+            print('\trecreating image')
+        else:
+            return
 
     print(f'\tsaving target ({len(strips_paths)} strips)')
 
@@ -96,17 +103,16 @@ def create_target_image(date_dir, strips_paths, width, size):
     tmp_target_fname.rename(image_fname)
 
 
-def main():
+def main(create_annotated=True, force_creation=False):
     # depth can be: 4, 8, 16, 20
     # (according to https://habr.com/ru/sandbox/99937/)
     depth = 20
     size = 550
     image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
-    create_annotated = True
 
     target = (
         (12, 5),
-        (17, 12)
+        (17, 13)
     )
     print(f'tiles target: {target}')
 
@@ -147,16 +153,16 @@ def main():
                 download_tile(date_dir, tile, image_url, depth, size, date_str)
 
             if len(tiles) > 0:
-                strip_fname = make_strip(date_dir, tiles, size, x)
+                strip_fname = make_strip(date_dir, tiles, size, x, force_creation=force_creation)
                 strips.append(strip_fname)
                 if create_annotated:
                     make_strip(date_dir, tiles, size, x, annotated=True)
 
         if len(strips) > 0:
             strip_width = (target[1][1] - target[0][1]) * size
-            create_target_image(date_dir, strips, strip_width, size)
+            make_target_image(date_dir, cur_date, strips, strip_width, size, force_creation=force_creation)
 
         cur_date += step
 
 
-main()
+main(create_annotated=False, force_creation=False)
