@@ -50,10 +50,11 @@ def make_strip(date_dir, tiles, size, x, annotated=False):
     strip_fname = Path(date_dir, 'strip_%s_%02d.jpg' % (strip_type, x))
     if strip_fname.exists():
         print(f'\t{strip_type} strip file exists')
-        return
+        return strip_fname
 
     print(f'\tsaving {strip_type} strip ({len(tiles)} tiles)')
-    img = Image.new('RGB', (len(tiles) * size, size))
+    width = len(tiles) * size
+    img = Image.new('RGB', (width, size))
     if annotated:
         draw = ImageDraw.Draw(img)
     for index, tile in enumerate(tiles):
@@ -74,6 +75,26 @@ def make_strip(date_dir, tiles, size, x, annotated=False):
     img.save(tmp_strip_fname, format='jpeg')
     tmp_strip_fname.rename(strip_fname)
 
+    return strip_fname
+
+
+def create_target_image(date_dir, strips_paths, width, size):
+    image_fname = Path(date_dir, 'target.jpg')
+    if image_fname.exists():
+        print('\ttarget image file exists')
+        return
+
+    print(f'\tsaving target ({len(strips_paths)} strips)')
+
+    img = Image.new('RGB', (width, len(strips_paths) * size))
+    for index, strip_path in enumerate(strips_paths):
+        strip_img = Image.open(strip_path)
+        img.paste(strip_img, (0, index * size))
+
+    tmp_target_fname = image_fname.with_suffix('.tmp')
+    img.save(tmp_target_fname, format='jpeg')
+    tmp_target_fname.rename(image_fname)
+
 
 def main():
     # depth can be: 4, 8, 16, 20
@@ -93,7 +114,8 @@ def main():
     cur_date = datetime.fromisoformat('2020-01-29 00:00')
     end_date = cur_date + timedelta(days=1)
 
-    base_dir = Path('cache', 'himawari8', str(depth), cur_date.strftime('%Y-%m-%d'))
+    base_dir = Path('~', 'cache-sat', 'himawari8', str(depth), cur_date.strftime('%Y-%m-%d'))
+    base_dir = base_dir.expanduser()
     base_dir.mkdir(parents=True, exist_ok=True)
 
     while cur_date < end_date:
@@ -109,6 +131,7 @@ def main():
         date_dir = Path(base_dir, cur_date.strftime('%H-%M'))
         date_dir.mkdir(parents=True, exist_ok=True)
 
+        strips = []
         for x in range(depth):
             tiles = []
             for y in range(depth):
@@ -124,9 +147,14 @@ def main():
                 download_tile(date_dir, tile, image_url, depth, size, date_str)
 
             if len(tiles) > 0:
-                make_strip(date_dir, tiles, size, x)
+                strip_fname = make_strip(date_dir, tiles, size, x)
+                strips.append(strip_fname)
                 if create_annotated:
                     make_strip(date_dir, tiles, size, x, annotated=True)
+
+        if len(strips) > 0:
+            strip_width = (target[1][1] - target[0][1]) * size
+            create_target_image(date_dir, strips, strip_width, size)
 
         cur_date += step
 
