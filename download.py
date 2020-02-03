@@ -1,5 +1,4 @@
-import urllib.request
-import shutil
+import requests
 from datetime import datetime, timedelta
 from pathlib import Path
 from PIL import Image, ImageDraw
@@ -40,9 +39,10 @@ class Downloader:
         self._log(f'[{x},{y}] downloading from {url}')
 
         tmp_fname = file_name.with_suffix('.tmp')
-        with urllib.request.urlopen(url) as response, open(tmp_fname, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file)
-
+        response = requests.get(url)
+        response.raise_for_status()
+        with open(tmp_fname, 'wb') as out_file:
+            out_file.write(response.content)
         tmp_fname.rename(file_name)
 
     def _make_strip(self, tiles, x, annotated=False):
