@@ -26,12 +26,13 @@ will download all the images from 2020-01-01.
 All the variables can be specified as parameters to the script:
 
 ```
-usage: download.py [-h] --date DATE [--depth DEPTH]
+usage: download.py [-h] --date DATE [--depth DEPTH] [--target TARGET]
 
 Donwloads Himawari8 images.
 
 optional arguments:
-  -h, --help     show this help message and exit
-  --date DATE    The day used to download images, as YYYY-MM-DD
-  --depth DEPTH  Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified
+  -h, --help       show this help message and exit
+  --date DATE      The day used to download images, as YYYY-MM-DD
+  --depth DEPTH    Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified
+  --target TARGET  Target region defined as left,top,right,bottom.
 ```
