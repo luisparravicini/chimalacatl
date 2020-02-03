@@ -112,10 +112,11 @@ class Downloader:
         when = self.cur_date.strftime('%Y-%m-%dT%H:%M')
         print(f'{when}: {what}')
 
-    def run(self, start_date):
-        # depth can be: 4, 8, 16, 20
-        # (according to https://habr.com/ru/sandbox/99937/)
-        depth = 20
+    def run(self, start_date, depth):
+        self.cur_date = start_date
+
+        self._log(f'using depth {depth}')
+
         self.size = 550
         image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
 
@@ -126,7 +127,6 @@ class Downloader:
         print(f'tiles target: {target}')
 
         step = timedelta(minutes=10)
-        self.cur_date = start_date
         end_date = self.cur_date + timedelta(days=1)
 
         base_dir = Path('~', 'cache-sat', 'himawari8', str(depth), self.cur_date.strftime('%Y-%m-%d'))
@@ -174,8 +174,10 @@ parser = argparse.ArgumentParser(description='Donwloads Himawari8 images.')
 parser.add_argument('--date',
                     required=True,
                     help='The day used to download images, as YYYY-MM-DD')
+parser.add_argument('--depth', type=int, default=20,
+                    help='Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified')
 args = parser.parse_args()
 
 date = datetime.strptime(args.date, '%Y-%m-%d')
 downloader = Downloader(create_annotated=False, force_creation=False)
-downloader.run(date)
+downloader.run(date, args.depth)
