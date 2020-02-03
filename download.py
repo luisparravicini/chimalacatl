@@ -104,7 +104,7 @@ class Downloader:
         when = self.cur_date.strftime('%Y-%m-%dT%H:%M')
         print(f'{when}: {what}')
 
-    def run(self):
+    def run(self, start_date):
         # depth can be: 4, 8, 16, 20
         # (according to https://habr.com/ru/sandbox/99937/)
         depth = 20
@@ -118,7 +118,7 @@ class Downloader:
         print(f'tiles target: {target}')
 
         step = timedelta(minutes=10)
-        self.cur_date = datetime.fromisoformat('2020-01-29 00:00')
+        self.cur_date = start_date
         end_date = self.cur_date + timedelta(days=1)
 
         base_dir = Path('~', 'cache-sat', 'himawari8', str(depth), self.cur_date.strftime('%Y-%m-%d'))
@@ -153,10 +153,12 @@ class Downloader:
                         self._make_strip(tiles, x, annotated=True)
 
             if len(strips) > 0:
-                strip_width = (target[1][1] - target[0][1]) * self.size
+                strip_width = (target[1][1] - target[0][1] + 1) * self.size
                 self._make_target_image(strips, strip_width)
 
             self.cur_date += step
 
 
-Downloader(create_annotated=False, force_creation=False).run()
+downloader = Downloader(create_annotated=False, force_creation=False)
+start_date = datetime.fromisoformat('2020-01-30 00:00')
+downloader.run(start_date)
