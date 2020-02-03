@@ -14,8 +14,24 @@ What does this script do:
 * If the script is stopped or crashes, running it again will resume from where it left off.
 
 
+After downloading the images, `mk_video.sh` will find all the target images and create a video `target.mp4` with those files.
+
 For example:
 
 `./download.py --date 2020-01-01`
 
 will download all the images from 2020-01-01.
+
+
+All the variables can be specified as parameters to the script:
+
+```
+usage: download.py [-h] --date DATE [--depth DEPTH]
+
+Donwloads Himawari8 images.
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --date DATE    The day used to download images, as YYYY-MM-DD
+  --depth DEPTH  Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified
+```
