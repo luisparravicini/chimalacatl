@@ -3,6 +3,7 @@ import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 from PIL import Image, ImageDraw
+import argparse
 
 #
 # Downloads a whole day of Himawari 8 images at the specified depth.
@@ -159,6 +160,12 @@ class Downloader:
             self.cur_date += step
 
 
+parser = argparse.ArgumentParser(description='Donwloads Himawari8 images.')
+parser.add_argument('--date',
+                    required=True,
+                    help='The day used to download images, as YYYY-MM-DD')
+args = parser.parse_args()
+
+date = datetime.strptime(args.date, '%Y-%m-%d')
 downloader = Downloader(create_annotated=False, force_creation=False)
-start_date = datetime.fromisoformat('2020-01-30 00:00')
-downloader.run(start_date)
+downloader.run(date)
