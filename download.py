@@ -174,9 +174,13 @@ parser.add_argument('--depth', type=int, default=20,
                     help='Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified')
 parser.add_argument('--target',
                     help='Target region defined as left,top,right,bottom. ')
+parser.add_argument('--annotated', default=False, action='store_true',
+                    help='Create annotated strip images.')
+parser.add_argument('--force', default=False, action='store_true',
+                    help='Force creation of strip and target images.')
 args = parser.parse_args()
 
 date = datetime.strptime(args.date, '%Y-%m-%d')
 target = [int(x) for x in args.target.split(',')]
-downloader = Downloader(create_annotated=False, force_creation=False)
+downloader = Downloader(create_annotated=args.annotated, force_creation=args.force)
 downloader.run(date, args.depth, target)
