@@ -41,11 +41,11 @@ class Downloader:
         tmp_fname = file_name.with_suffix('.tmp')
         try:
             response = requests.get(url)
-        except Timeout:
-            self._log('timeout, skipping tile')
+            response.raise_for_status()
+        except requests.exceptions.BaseHTTPError as e:
+            self._log(f'error during download: "{e}"')
             return False
 
-        response.raise_for_status()
         with open(tmp_fname, 'wb') as out_file:
             out_file.write(response.content)
         tmp_fname.rename(file_name)
