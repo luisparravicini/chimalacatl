@@ -181,6 +181,8 @@ parser.add_argument('--force', default=False, action='store_true',
 args = parser.parse_args()
 
 date = datetime.strptime(args.date, '%Y-%m-%d')
-target = [int(x) for x in args.target.split(',')]
+target = []
+if args.target is not None:
+    target = [int(x) for x in args.target.split(',')]
 downloader = Downloader(create_annotated=args.annotated, force_creation=args.force)
 downloader.run(date, args.depth, target)
