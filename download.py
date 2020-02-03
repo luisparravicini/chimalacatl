@@ -33,17 +33,24 @@ class Downloader:
 
         if file_name.exists():
             self._log(f'[{x},{y}] cached')
-            return
+            return True
 
         url = image_url % (depth, self.size, date_str, y, x)
         self._log(f'[{x},{y}] downloading from {url}')
 
         tmp_fname = file_name.with_suffix('.tmp')
-        response = requests.get(url)
+        try:
+            response = requests.get(url)
+        except Timeout:
+            self._log('timeout, skipping tile')
+            return False
+
         response.raise_for_status()
         with open(tmp_fname, 'wb') as out_file:
             out_file.write(response.content)
         tmp_fname.rename(file_name)
+
+        return True
 
     def _make_strip(self, tiles, x, annotated=False):
         if annotated:
@@ -132,6 +139,7 @@ class Downloader:
             self.date_dir = Path(base_dir, self.cur_date.strftime('%H-%M'))
             self.date_dir.mkdir(parents=True, exist_ok=True)
 
+            all_downloaded = True
             strips = []
             for x in range(depth):
                 tiles = []
@@ -145,15 +153,17 @@ class Downloader:
                     tile = (x, y)
                     tiles.append(tile)
 
-                    self._download_tile(tile, image_url, depth, date_str)
+                    success = self._download_tile(tile, image_url, depth, date_str)
+                    if not success:
+                        all_downloaded = False
 
-                if len(tiles) > 0:
+                if all_downloaded and len(tiles) > 0:
                     strip_fname = self._make_strip(tiles, x)
                     strips.append(strip_fname)
                     if self.create_annotated:
                         self._make_strip(tiles, x, annotated=True)
 
-            if len(strips) > 0:
+            if all_downloaded and len(strips) > 0:
                 strip_width = (target[1][1] - target[0][1] + 1) * self.size
                 self._make_target_image(strips, strip_width)
 
