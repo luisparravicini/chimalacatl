@@ -112,7 +112,7 @@ class Downloader:
         when = self.cur_date.strftime('%Y-%m-%dT%H:%M')
         print(f'{when}: {what}')
 
-    def run(self, start_date, depth):
+    def run(self, start_date, depth, target):
         self.cur_date = start_date
 
         self._log(f'using depth {depth}')
@@ -120,11 +120,7 @@ class Downloader:
         self.size = 550
         image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
 
-        target = (
-            (12, 5),
-            (17, 13)
-        )
-        print(f'tiles target: {target}')
+        self._log(f'tiles target: {target}')
 
         step = timedelta(minutes=10)
         end_date = self.cur_date + timedelta(days=1)
@@ -145,9 +141,9 @@ class Downloader:
                 tiles = []
                 for y in range(depth):
                     if len(target) > 0:
-                        if x < target[0][0] or y < target[0][1]:
+                        if x < target[0] or y < target[1]:
                             continue
-                        if x > target[1][0] or y > target[1][1]:
+                        if x > target[2] or y > target[3]:
                             continue
 
                     tile = (x, y)
@@ -164,7 +160,7 @@ class Downloader:
                         self._make_strip(tiles, x, annotated=True)
 
             if all_downloaded and len(strips) > 0:
-                strip_width = (target[1][1] - target[0][1] + 1) * self.size
+                strip_width = (target[3] - target[1] + 1) * self.size
                 self._make_target_image(strips, strip_width)
 
             self.cur_date += step
@@ -176,8 +172,11 @@ parser.add_argument('--date',
                     help='The day used to download images, as YYYY-MM-DD')
 parser.add_argument('--depth', type=int, default=20,
                     help='Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified')
+parser.add_argument('--target',
+                    help='Target region defined as left,top,right,bottom. ')
 args = parser.parse_args()
 
 date = datetime.strptime(args.date, '%Y-%m-%d')
+target = [int(x) for x in args.target.split(',')]
 downloader = Downloader(create_annotated=False, force_creation=False)
-downloader.run(date, args.depth)
+downloader.run(date, args.depth, target)
