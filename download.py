@@ -42,7 +42,8 @@ class Downloader:
         try:
             response = requests.get(url)
             response.raise_for_status()
-        except requests.exceptions.BaseHTTPError as e:
+        except (requests.exceptions.BaseHTTPError,
+                requests.exceptions.ConnectionError) as e:
             self._log(f'error during download: "{e}"')
             return False
 
