@@ -20,12 +20,35 @@ import os
 #
 
 
+class Log:
+    def __init__(self, cur_date):
+        self._last_grouped = False
+        self._cur_date = cur_date
+
+    def log_grouped(self, what):
+        self.log(what, use_same_line=True)
+
+    def log(self, what, use_same_line=False):
+        when = self._cur_date.strftime('%Y-%m-%dT%H:%M')
+        if use_same_line:
+            # clear current line
+            print("\r\x1b[2K", end='')
+            prefix = end = ''
+            self._last_grouped = True
+        else:
+            prefix = "\r"
+            end = "\n"
+            if self._last_grouped:
+                self._last_grouped = False
+                prefix = "\n"
+        print(f'{prefix}{when}: {what}', end=end, flush=True)
+
+
 class Downloader:
     def __init__(self, create_annotated, force_creation, location):
         self.create_annotated = create_annotated
         self.force_creation = force_creation
         self.location = location
-        self._last_grouped = False
 
     def _tile_fname(self, pos):
         return Path(self.date_dir, '%d-%d.png' % pos)
@@ -35,11 +58,11 @@ class Downloader:
         file_name = self._tile_fname(tile)
 
         if file_name.exists():
-            self._log_grouped(f'[{x},{y}] cached')
+            self.logger.log_grouped(f'[{x},{y}] cached')
             return True
 
         url = image_url % (depth, self.size, date_str, y, x)
-        self._log_grouped(f'[{x},{y}] downloading {url}')
+        self.logger.log_grouped(f'[{x},{y}] downloading {url}')
 
         tmp_fname = file_name.with_suffix('.tmp')
         try:
@@ -47,7 +70,7 @@ class Downloader:
             response.raise_for_status()
         except (requests.exceptions.BaseHTTPError,
                 requests.exceptions.ConnectionError) as e:
-            self._log(f'error during download: "{e}"')
+            self.logger.log(f'error during download: "{e}"')
             return False
 
         with open(tmp_fname, 'wb') as out_file:
@@ -64,11 +87,11 @@ class Downloader:
 
         strip_fname = Path(self.date_dir, 'strip_%s_%02d.jpg' % (strip_type, x))
         if strip_fname.exists():
-            self._log_grouped(f'{strip_type}strip file exists (recreate? {self.force_creation})')
+            self.logger.log_grouped(f'{strip_type}strip file exists (recreate? {self.force_creation})')
             if not self.force_creation:
                 return strip_fname
 
-        self._log(f'saving {strip_type}strip ({len(tiles)} tiles)')
+        self.logger.log(f'saving {strip_type}strip ({len(tiles)} tiles)')
         width = len(tiles) * self.size
         img = Image.new('RGB', (width, self.size))
         if annotated:
@@ -80,7 +103,7 @@ class Downloader:
                 img.paste(tile_img, (index * self.size, 0))
             except IOError as e:
                 if str(e) == 'image file is truncated':
-                    self._log(f'removing truncated image (rerun script)')
+                    self.logger.log(f'removing truncated image (rerun script)')
                     os.remove(tile_path)
                     return None
                 else:
@@ -106,11 +129,11 @@ class Downloader:
         dstr = self.cur_date.strftime('%Y%m%d%H%M%S')
         image_fname = Path(self.date_dir, 'target-%s.jpg' % dstr)
         if image_fname.exists():
-            self._log_grouped(f'target image file exists (recreate? {self.force_creation})')
+            self.logger.log_grouped(f'target image file exists (recreate? {self.force_creation})')
             if not self.force_creation:
                 return
 
-        self._log(f'saving target ({len(strips_paths)} strips)')
+        self.logger.log(f'saving target ({len(strips_paths)} strips)')
 
         img = Image.new('RGB', (width, len(strips_paths) * self.size))
         for index, strip_path in enumerate(strips_paths):
@@ -121,28 +144,11 @@ class Downloader:
         img.save(tmp_target_fname, format='jpeg')
         tmp_target_fname.rename(image_fname)
 
-    def _log_grouped(self, what):
-        self._log(what, use_same_line=True)
-
-    def _log(self, what, use_same_line=False):
-        when = self.cur_date.strftime('%Y-%m-%dT%H:%M')
-        if use_same_line:
-            # clear current line
-            print("\r\x1b[2K", end='')
-            prefix = end = ''
-            self._last_grouped = True
-        else:
-            prefix = "\r"
-            end = "\n"
-            if self._last_grouped:
-                self._last_grouped = False
-                prefix = "\n"
-        print(f'{prefix}{when}: {what}', end=end, flush=True)
-
     def run(self, start_date, depth, target):
         self.cur_date = pytz.utc.localize(start_date)
+        self.logger = Log(self.cur_date)
 
-        self._log(f'using depth {depth}')
+        self.logger.log(f'using depth {depth}')
 
         sunrise = sunset = None
         if self.location is not None:
@@ -151,7 +157,7 @@ class Downloader:
             sunset = sun.get_sunset_time(self.cur_date)
             sunrise_s = sunrise.strftime('%H:%M')
             sunset_s = sunset.strftime('%H:%M')
-            self._log(f'using location: {self.location}, sunrise: {sunrise_s}, sunset: {sunset_s}')
+            self.logger.log(f'using location: {self.location}, sunrise: {sunrise_s}, sunset: {sunset_s}')
             # magic!
             suntime_offset = timedelta(hours=1)
             sunrise -= suntime_offset
@@ -160,7 +166,7 @@ class Downloader:
         self.size = 550
         image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
 
-        self._log(f'tiles target: {target}')
+        self.logger.log(f'tiles target: {target}')
 
         step = timedelta(minutes=10)
         end_date = self.cur_date + timedelta(days=1)
