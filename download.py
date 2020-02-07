@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from PIL import Image, ImageDraw
 import argparse
+from suntime import Sun, SunTimeException
+import pytz
+import os
 
 #
 # Downloads a whole day of Himawari 8 images at the specified depth.
@@ -15,14 +18,13 @@ import argparse
 # There's a json with the date of the latest image taken at:
 # http://himawari8-dl.nict.go.jp/himawari8/img/D531106/latest.json
 #
-# timezone used in date strings is (supposedly) gmt+8
-#
 
 
 class Downloader:
-    def __init__(self, create_annotated, force_creation):
+    def __init__(self, create_annotated, force_creation, location):
         self.create_annotated = create_annotated
         self.force_creation = force_creation
+        self.location = location
 
     def _tile_fname(self, pos):
         return Path(self.date_dir, '%d-%d.png' % pos)
@@ -71,8 +73,17 @@ class Downloader:
         if annotated:
             draw = ImageDraw.Draw(img)
         for index, tile in enumerate(tiles):
-            tile_img = Image.open(self._tile_fname(tile))
-            img.paste(tile_img, (index * self.size, 0))
+            tile_path = self._tile_fname(tile)
+            tile_img = Image.open(tile_path)
+            try:
+                img.paste(tile_img, (index * self.size, 0))
+            except IOError as e:
+                if str(e) == 'image file is truncated':
+                    self._log(f'removing truncated image (rerun script)')
+                    os.remove(tile_path)
+                    return None
+                else:
+                    raise e
             if annotated:
                 draw.rectangle(
                     ((index * self.size, 0), (index * self.size + self.size, self.size)),
@@ -114,9 +125,22 @@ class Downloader:
         print(f'{when}: {what}')
 
     def run(self, start_date, depth, target):
-        self.cur_date = start_date
+        self.cur_date = pytz.utc.localize(start_date)
 
         self._log(f'using depth {depth}')
+
+        sunrise = sunset = None
+        if self.location is not None:
+            sun = Sun(self.location[0], self.location[1])
+            sunrise = sun.get_sunrise_time(self.cur_date)
+            sunset = sun.get_sunset_time(self.cur_date)
+            sunrise_s = sunrise.strftime('%H:%M')
+            sunset_s = sunset.strftime('%H:%M')
+            self._log(f'using location: {self.location}, sunrise: {sunrise_s}, sunset: {sunset_s}')
+            # magic!
+            suntime_offset = timedelta(hours=1)
+            sunrise -= suntime_offset
+            sunset += suntime_offset
 
         self.size = 550
         image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
@@ -134,7 +158,16 @@ class Downloader:
             date_str = self.cur_date.strftime('%Y/%m/%d/%H%M%S')
 
             self.date_dir = Path(base_dir, self.cur_date.strftime('%H-%M'))
-            self.date_dir.mkdir(parents=True, exist_ok=True)
+
+            if sunrise is not None:
+                if sunrise > sunset:
+                    if sunset <= self.cur_date <= sunrise:
+                        self.cur_date += step
+                        continue
+                else:
+                    if sunrise <= self.cur_date <= sunset:
+                        self.cur_date += step
+                        continue
 
             all_downloaded = True
             strips = []
@@ -150,15 +183,19 @@ class Downloader:
                     tile = (x, y)
                     tiles.append(tile)
 
+                    self.date_dir.mkdir(parents=True, exist_ok=True)
                     success = self._download_tile(tile, image_url, depth, date_str)
                     if not success:
                         all_downloaded = False
 
                 if all_downloaded and len(tiles) > 0:
                     strip_fname = self._make_strip(tiles, x)
-                    strips.append(strip_fname)
-                    if self.create_annotated:
-                        self._make_strip(tiles, x, annotated=True)
+                    if strip_fname is None:
+                        all_downloaded = False
+                    else:
+                        strips.append(strip_fname)
+                        if self.create_annotated:
+                            self._make_strip(tiles, x, annotated=True)
 
             if all_downloaded and len(strips) > 0:
                 strip_width = (target[3] - target[1] + 1) * self.size
@@ -174,16 +211,25 @@ parser.add_argument('--date',
 parser.add_argument('--depth', type=int, default=20,
                     help='Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified')
 parser.add_argument('--target',
-                    help='Target region defined as left,top,right,bottom. ')
+                    help='Target region defined as "left top right bottom". ')
 parser.add_argument('--annotated', default=False, action='store_true',
                     help='Create annotated strip images.')
 parser.add_argument('--force', default=False, action='store_true',
                     help='Force creation of strip and target images.')
+parser.add_argument('--location',
+                    help='Location to use to get sunset/sunrise times. Specified as "latitude longitude"')
 args = parser.parse_args()
 
 date = datetime.strptime(args.date, '%Y-%m-%d')
 target = []
 if args.target is not None:
-    target = [int(x) for x in args.target.split(',')]
-downloader = Downloader(create_annotated=args.annotated, force_creation=args.force)
+    target = [int(x) for x in args.target.split(' ')]
+location = None
+if args.location is not None:
+    location = [float(x) for x in args.location.split(' ')]
+downloader = Downloader(
+                create_annotated=args.annotated,
+                force_creation=args.force,
+                location=location)
+
 downloader.run(date, args.depth, target)

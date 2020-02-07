@@ -12,6 +12,7 @@ What this script do:
 * With each downloaded row of images an image strip is generated. It optionally creates a strip image with borders on each tile and the row/column of it the top left corner.
 * After the target region (or whole image) is downloaded, a target image is created.
 * If the script is stopped or crashes, running it again will resume from where it left off.
+* If a location is supplied, it tries to download only images during the day using sunrise and sunset times for the location provided.
 
 
 After downloading the images, `mk_video.sh` will find all the target images and create a video `target.mp4` with those files.
@@ -26,15 +27,16 @@ will download all the images from 2020-01-01.
 All the variables can be specified as parameters to the script:
 
 ```
-usage: download.py [-h] --date DATE [--depth DEPTH] [--target TARGET] [--annotated] [--force]
+usage: download.py [-h] --date DATE [--depth DEPTH] [--target TARGET] [--annotated] [--force] [--location LOCATION]
 
 Donwloads Himawari8 images.
 
 optional arguments:
-  -h, --help       show this help message and exit
-  --date DATE      The day used to download images, as YYYY-MM-DD
-  --depth DEPTH    Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified
-  --target TARGET  Target region defined as left,top,right,bottom.
-  --annotated      Create annotated strip images.
-  --force          Force creation of strip and target images.
+  -h, --help           show this help message and exit
+  --date DATE          The day used to download images, as YYYY-MM-DD
+  --depth DEPTH        Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified
+  --target TARGET      Target region defined as "left top right bottom".
+  --annotated          Create annotated strip images.
+  --force              Force creation of strip and target images.
+  --location LOCATION  Location to use to get sunset/sunrise times. Specified as "latitude longitude"
 ```
