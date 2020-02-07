@@ -25,6 +25,7 @@ class Downloader:
         self.create_annotated = create_annotated
         self.force_creation = force_creation
         self.location = location
+        self._last_grouped = False
 
     def _tile_fname(self, pos):
         return Path(self.date_dir, '%d-%d.png' % pos)
@@ -34,11 +35,11 @@ class Downloader:
         file_name = self._tile_fname(tile)
 
         if file_name.exists():
-            self._log(f'[{x},{y}] cached')
+            self._log_grouped(f'[{x},{y}] cached')
             return True
 
         url = image_url % (depth, self.size, date_str, y, x)
-        self._log(f'[{x},{y}] downloading from {url}')
+        self._log_grouped(f'[{x},{y}] downloading {url}')
 
         tmp_fname = file_name.with_suffix('.tmp')
         try:
@@ -63,7 +64,7 @@ class Downloader:
 
         strip_fname = Path(self.date_dir, 'strip_%s_%02d.jpg' % (strip_type, x))
         if strip_fname.exists():
-            self._log(f'{strip_type}strip file exists (recreate? {self.force_creation})')
+            self._log_grouped(f'{strip_type}strip file exists (recreate? {self.force_creation})')
             if not self.force_creation:
                 return strip_fname
 
@@ -105,7 +106,7 @@ class Downloader:
         dstr = self.cur_date.strftime('%Y%m%d%H%M%S')
         image_fname = Path(self.date_dir, 'target-%s.jpg' % dstr)
         if image_fname.exists():
-            self._log(f'target image file exists (recreate? {self.force_creation})')
+            self._log_grouped(f'target image file exists (recreate? {self.force_creation})')
             if not self.force_creation:
                 return
 
@@ -120,9 +121,23 @@ class Downloader:
         img.save(tmp_target_fname, format='jpeg')
         tmp_target_fname.rename(image_fname)
 
-    def _log(self, what):
+    def _log_grouped(self, what):
+        self._log(what, use_same_line=True)
+
+    def _log(self, what, use_same_line=False):
         when = self.cur_date.strftime('%Y-%m-%dT%H:%M')
-        print(f'{when}: {what}')
+        if use_same_line:
+            # clear current line
+            print("\r\x1b[2K", end='')
+            prefix = end = ''
+            self._last_grouped = True
+        else:
+            prefix = "\r"
+            end = "\n"
+            if self._last_grouped:
+                self._last_grouped = False
+                prefix = "\n"
+        print(f'{prefix}{when}: {what}', end=end, flush=True)
 
     def run(self, start_date, depth, target):
         self.cur_date = pytz.utc.localize(start_date)
@@ -202,6 +217,8 @@ class Downloader:
                 self._make_target_image(strips, strip_width)
 
             self.cur_date += step
+
+        print()
 
 
 parser = argparse.ArgumentParser(description='Donwloads Himawari8 images.')
