@@ -55,10 +55,14 @@ class Suntime:
 class Log:
     def __init__(self, cur_date):
         self._last_grouped = False
-        self.cur_date = cur_date
+        self._cur_date = cur_date
 
     def log_grouped(self, what):
         self.log(what, use_same_line=True)
+
+    def update_date(self, date):
+        self._cur_date = date
+        self._last_grouped = False
 
     def log(self, what, use_same_line=False):
         if use_same_line:
@@ -73,10 +77,10 @@ class Log:
                 self._last_grouped = False
                 prefix = "\n"
 
-        if self.cur_date is None:
+        if self._cur_date is None:
             msg = f'{prefix}{what}'
         else:
-            when = self.cur_date.strftime('%Y-%m-%dT%H:%M')
+            when = self._cur_date.strftime('%Y-%m-%dT%H:%M')
             msg = f'{prefix}{when}: {what}'
 
         print(msg, end=end, flush=True)
@@ -132,7 +136,7 @@ class Chimalacatl:
             if not self.force_creation:
                 return strip_fname
 
-        self.logger.log(f'saving {strip_type}strip ({len(tiles)} tiles)')
+        self.logger.log_grouped(f'saving {strip_type}strip ({len(tiles)} tiles)')
         width = len(tiles) * self.size
         img = Image.new('RGB', (width, self.size))
         if annotated:
@@ -178,7 +182,7 @@ class Chimalacatl:
             if not self.force_creation:
                 return
 
-        self.logger.log(f'saving target ({len(strips_paths)} strips)')
+        self.logger.log_grouped(f'saving target ({len(strips_paths)} strips)')
 
         img = Image.new('RGB', (width, len(strips_paths) * self.size))
         for index, strip_path in enumerate(strips_paths):
@@ -201,7 +205,7 @@ class Chimalacatl:
 
     def _inc_date(self, step):
         self.cur_date += step
-        self.logger.cur_date = self.cur_date
+        self.logger.update_date(self.cur_date)
 
     def run(self, start_date, depth, target):
         self.cur_date = pytz.utc.localize(start_date)
