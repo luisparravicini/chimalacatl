@@ -20,6 +20,38 @@ import os
 #
 
 
+class Suntime:
+    # magic!
+    OFFSET = timedelta(minutes=30)
+
+    def __init__(self, location, logger):
+        self.logger = logger
+        self.sun = None
+        if location is not None:
+            self.sun = Sun(location[0], location[1])
+
+    def sunset(self, cur_date):
+        sunset = self.sun.get_sunset_time(cur_date)
+        return sunset - Suntime.OFFSET
+
+    def sunrise(self, cur_date):
+        sunrise = self.sun.get_sunrise_time(cur_date)
+        return sunrise + Suntime.OFFSET
+
+    def is_night(self, cur_date):
+        if self.sun is None:
+            return False
+
+        sunrise = self.sunrise(cur_date)
+        sunset = self.sunset(cur_date)
+        if sunrise > sunset:
+            if sunset <= cur_date <= sunrise:
+                return True
+        else:
+            if sunrise <= cur_date <= sunset:
+                return True
+
+
 class Log:
     def __init__(self, cur_date):
         self._last_grouped = False
@@ -163,24 +195,21 @@ class Downloader:
             for path in sorted(targets_list):
                 file.write(f"file '{path}'\n")
 
+    def _cache_dir(self, depth):
+        cache_dir = Path('~', 'cache-sat', 'himawari8', str(depth))
+        return cache_dir.expanduser()
+
     def run(self, start_date, depth, target):
         self.cur_date = pytz.utc.localize(start_date)
         self.logger = Log(self.cur_date)
 
         self.logger.log(f'using depth {depth}')
 
-        sunrise = sunset = None
+        suntime = Suntime(self.location, self.logger)
         if self.location is not None:
-            sun = Sun(self.location[0], self.location[1])
-            sunrise = sun.get_sunrise_time(self.cur_date)
-            sunset = sun.get_sunset_time(self.cur_date)
-            sunrise_s = sunrise.strftime('%H:%M')
-            sunset_s = sunset.strftime('%H:%M')
+            sunrise_s = suntime.sunrise(self.cur_date).strftime('%H:%M')
+            sunset_s = suntime.sunset(self.cur_date).strftime('%H:%M')
             self.logger.log(f'using location: {self.location}, sunrise: {sunrise_s}, sunset: {sunset_s}')
-            # magic!
-            suntime_offset = timedelta(hours=1)
-            sunrise -= suntime_offset
-            sunset += suntime_offset
 
         self.size = 550
         image_url = "http://himawari8.nict.go.jp/img/D531106/%dd/%d/%s_%d_%d.png"
@@ -190,8 +219,7 @@ class Downloader:
         step = timedelta(minutes=10)
         end_date = self.cur_date + timedelta(days=1)
 
-        base_dir = Path('~', 'cache-sat', 'himawari8', str(depth), self.cur_date.strftime('%Y-%m-%d'))
-        base_dir = base_dir.expanduser()
+        base_dir = Path(self._cache_dir(depth),  self.cur_date.strftime('%Y-%m-%d'))
         base_dir.mkdir(parents=True, exist_ok=True)
 
         while self.cur_date < end_date:
@@ -199,15 +227,9 @@ class Downloader:
 
             self.date_dir = Path(base_dir, self.cur_date.strftime('%H-%M'))
 
-            if sunrise is not None:
-                if sunrise > sunset:
-                    if sunset <= self.cur_date <= sunrise:
-                        self.cur_date += step
-                        continue
-                else:
-                    if sunrise <= self.cur_date <= sunset:
-                        self.cur_date += step
-                        continue
+            if suntime.is_night(self.cur_date):
+                self.cur_date += step
+                continue
 
             all_downloaded = True
             strips = []
@@ -251,8 +273,7 @@ class Downloader:
 
         self.logger.log(f'using depth {depth}')
 
-        base_dir = Path('~', 'cache-sat', 'himawari8', str(depth))
-        base_dir = base_dir.expanduser()
+        base_dir = self._cache_dir(depth)
 
         if not base_dir.exists():
             self._log("cache doesn't exist")
@@ -267,25 +288,9 @@ class Downloader:
             parts = root.split('/')
             self.cur_date = pytz.utc.localize(datetime.strptime(parts[-2] + ' ' + parts[-1], '%Y-%m-%d %H-%M'))
 
-            sunrise = sunset = None
-            if self.location is not None:
-                sun = Sun(self.location[0], self.location[1])
-                sunrise = sun.get_sunrise_time(self.cur_date)
-                sunset = sun.get_sunset_time(self.cur_date)
-                sunrise_s = sunrise.strftime('%H:%M')
-                sunset_s = sunset.strftime('%H:%M')
-                # magic!
-                suntime_offset = timedelta(minutes=30)
-                sunrise -= suntime_offset
-                sunset += suntime_offset
-
-            if sunrise is not None:
-                if sunrise > sunset:
-                    if sunset <= self.cur_date <= sunrise:
-                        continue
-                else:
-                    if sunrise <= self.cur_date <= sunset:
-                        continue
+            suntime = Suntime(self.location, self.logger)
+            if suntime.is_night(self.cur_date):
+                continue
 
             target_files.append(Path(root, target_fname[0]))
 
