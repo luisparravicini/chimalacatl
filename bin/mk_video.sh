@@ -3,7 +3,7 @@
 dir=`dirname "$0"`
 source "$dir"/common.sh
 
-python "$dir"/../download.py --depth $depth --location "$lat $lng" --targets
+python "$dir"/../chimalacatl.py --depth $depth --location "$lat $lng" --targets
 [ $? -eq 0 ] || exit 1
 
 # -vf scale=-1:640

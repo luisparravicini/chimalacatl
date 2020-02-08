@@ -19,7 +19,7 @@ After downloading the images, a file containing a file for `bin/mk_video.sh` wil
 
 For example:
 
-`./download.py --date 2020-01-01`
+`./chimalacatl.py --date 2020-01-01`
 
 will download all the images from 2020-01-01.
 
@@ -27,7 +27,7 @@ will download all the images from 2020-01-01.
 All the variables can be specified as parameters to the script:
 
 ```
-usage: download.py [-h] [--date DATE] [--targets] [--depth DEPTH] [--target TARGET] [--annotated] [--force]
+usage: chimalacatl.py [-h] [--date DATE] [--targets] [--depth DEPTH] [--target TARGET] [--annotated] [--force]
                    [--location LOCATION]
 
 Donwloads Himawari8 images.

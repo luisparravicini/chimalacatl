@@ -82,7 +82,7 @@ class Log:
         print(msg, end=end, flush=True)
 
 
-class Downloader:
+class Chimalacatl:
     TARGET_FNAME_PREFIX = 'target-'
 
     def __init__(self, targets_path, create_annotated, force_creation, location):
@@ -168,7 +168,7 @@ class Downloader:
 
     def _target_path(self):
         dstr = self.cur_date.strftime('%Y%m%d%H%M%S')
-        fname = '%s%s.jpg' % (Downloader.TARGET_FNAME_PREFIX, dstr)
+        fname = '%s%s.jpg' % (Chimalacatl.TARGET_FNAME_PREFIX, dstr)
         return Path(self.date_dir, fname)
 
     def _make_target_image(self, strips_paths, width):
@@ -281,7 +281,7 @@ class Downloader:
 
         target_files = []
         for root, dirs, files in os.walk(base_dir):
-            target_fname = list(filter(lambda x: x.startswith(Downloader.TARGET_FNAME_PREFIX), files))
+            target_fname = list(filter(lambda x: x.startswith(Chimalacatl.TARGET_FNAME_PREFIX), files))
             if len(target_fname) == 0:
                 continue
 
@@ -331,13 +331,13 @@ if args.location is not None:
     location = [float(x) for x in args.location.split(' ')]
 depth = args.depth
 
-downloader = Downloader(
+chimalacatl = Chimalacatl(
                 'targets.txt',
                 create_annotated=args.annotated,
                 force_creation=args.force,
                 location=location)
 
 if date is None:
-    downloader.make_targets_list(depth)
+    chimalacatl.make_targets_list(depth)
 else:
-    downloader.run(date, depth, target)
+    chimalacatl.run(date, depth, target)
