@@ -269,7 +269,10 @@ class Chimalacatl:
 
             if all_downloaded:
                 if len(strips) > 0:
-                    strip_width = (target[3] - target[1] + 1) * self.size
+                    w = depth
+                    if len(target) > 0:
+                        w = (target[3] - target[1] + 1)
+                    strip_width = w * self.size
                     self._make_target_image(strips, strip_width)
 
             self._inc_date(step)
