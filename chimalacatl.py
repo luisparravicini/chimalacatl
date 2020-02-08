@@ -55,7 +55,7 @@ class Suntime:
 class Log:
     def __init__(self, cur_date):
         self._last_grouped = False
-        self._cur_date = cur_date
+        self.cur_date = cur_date
 
     def log_grouped(self, what):
         self.log(what, use_same_line=True)
@@ -73,10 +73,10 @@ class Log:
                 self._last_grouped = False
                 prefix = "\n"
 
-        if self._cur_date is None:
+        if self.cur_date is None:
             msg = f'{prefix}{what}'
         else:
-            when = self._cur_date.strftime('%Y-%m-%dT%H:%M')
+            when = self.cur_date.strftime('%Y-%m-%dT%H:%M')
             msg = f'{prefix}{when}: {what}'
 
         print(msg, end=end, flush=True)
@@ -199,6 +199,10 @@ class Chimalacatl:
         cache_dir = Path('~', 'cache-sat', 'himawari8', str(depth))
         return cache_dir.expanduser()
 
+    def _inc_date(self, step):
+        self.cur_date += step
+        self.logger.cur_date = self.cur_date
+
     def run(self, start_date, depth, target):
         self.cur_date = pytz.utc.localize(start_date)
         self.logger = Log(self.cur_date)
@@ -228,7 +232,7 @@ class Chimalacatl:
             self.date_dir = Path(base_dir, self.cur_date.strftime('%H-%M'))
 
             if suntime.is_night(self.cur_date):
-                self.cur_date += step
+                self._inc_date(step)
                 continue
 
             all_downloaded = True
@@ -264,7 +268,7 @@ class Chimalacatl:
                     strip_width = (target[3] - target[1] + 1) * self.size
                     self._make_target_image(strips, strip_width)
 
-            self.cur_date += step
+            self._inc_date(step)
 
         print()
 
