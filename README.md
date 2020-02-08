@@ -3,6 +3,7 @@ This script is used to download a whole day of tiles from the Himawari 8 satelli
 Himawari 8 is [japanese geostationary weather satellite](https://en.wikipedia.org/wiki/Himawari_8). The captured image is divided into tiles and there's new images every 10 minutes. All the tiles are 550px x 550px.
 There's a "depth" variable which determines the definition of the whole image, possible values could be 4, 8, 16 or 20. For a depth of 4 the whole image is 4x4 tiles, thus having 2200px x 2200px (550px * 4). A depth of 20 gives an image composed of 20 x 20 tiles and the whole image is 11000px (550px * 20).
 
+[![Australia timelapse](http://img.youtube.com/vi/H4ey_s_tPOo/0.jpg)](https://www.youtube.com/watch?v=H4ey_s_tPOo&feature=youtu.be&hd=1)
 
 What this script do:
 
