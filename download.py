@@ -29,7 +29,6 @@ class Log:
         self.log(what, use_same_line=True)
 
     def log(self, what, use_same_line=False):
-        when = self._cur_date.strftime('%Y-%m-%dT%H:%M')
         if use_same_line:
             # clear current line
             print("\r\x1b[2K", end='')
@@ -41,14 +40,24 @@ class Log:
             if self._last_grouped:
                 self._last_grouped = False
                 prefix = "\n"
-        print(f'{prefix}{when}: {what}', end=end, flush=True)
+
+        if self._cur_date is None:
+            msg = f'{prefix}{what}'
+        else:
+            when = self._cur_date.strftime('%Y-%m-%dT%H:%M')
+            msg = f'{prefix}{when}: {what}'
+
+        print(msg, end=end, flush=True)
 
 
 class Downloader:
-    def __init__(self, create_annotated, force_creation, location):
+    TARGET_FNAME_PREFIX = 'target-'
+
+    def __init__(self, targets_path, create_annotated, force_creation, location):
         self.create_annotated = create_annotated
         self.force_creation = force_creation
         self.location = location
+        self.targets_path = targets_path
 
     def _tile_fname(self, pos):
         return Path(self.date_dir, '%d-%d.png' % pos)
@@ -125,9 +134,13 @@ class Downloader:
 
         return strip_fname
 
-    def _make_target_image(self, strips_paths, width):
+    def _target_path(self):
         dstr = self.cur_date.strftime('%Y%m%d%H%M%S')
-        image_fname = Path(self.date_dir, 'target-%s.jpg' % dstr)
+        fname = '%s%s.jpg' % (Downloader.TARGET_FNAME_PREFIX, dstr)
+        return Path(self.date_dir, fname)
+
+    def _make_target_image(self, strips_paths, width):
+        image_fname = self._target_path()
         if image_fname.exists():
             self.logger.log_grouped(f'target image file exists (recreate? {self.force_creation})')
             if not self.force_creation:
@@ -143,6 +156,12 @@ class Downloader:
         tmp_target_fname = image_fname.with_suffix('.tmp')
         img.save(tmp_target_fname, format='jpeg')
         tmp_target_fname.rename(image_fname)
+
+    def _save_targets(self, targets_list):
+        self.logger.log(f'saving video files list to {self.targets_path}, {len(targets_list)} files')
+        with open(self.targets_path, 'w') as file:
+            for path in sorted(targets_list):
+                file.write(f"file '{path}'\n")
 
     def run(self, start_date, depth, target):
         self.cur_date = pytz.utc.localize(start_date)
@@ -218,41 +237,102 @@ class Downloader:
                         if self.create_annotated:
                             self._make_strip(tiles, x, annotated=True)
 
-            if all_downloaded and len(strips) > 0:
-                strip_width = (target[3] - target[1] + 1) * self.size
-                self._make_target_image(strips, strip_width)
+            if all_downloaded:
+                if len(strips) > 0:
+                    strip_width = (target[3] - target[1] + 1) * self.size
+                    self._make_target_image(strips, strip_width)
 
             self.cur_date += step
 
         print()
 
+    def make_targets_list(self, depth):
+        self.logger = Log(None)
+
+        self.logger.log(f'using depth {depth}')
+
+        base_dir = Path('~', 'cache-sat', 'himawari8', str(depth))
+        base_dir = base_dir.expanduser()
+
+        if not base_dir.exists():
+            self._log("cache doesn't exist")
+            return
+
+        target_files = []
+        for root, dirs, files in os.walk(base_dir):
+            target_fname = list(filter(lambda x: x.startswith(Downloader.TARGET_FNAME_PREFIX), files))
+            if len(target_fname) == 0:
+                continue
+
+            parts = root.split('/')
+            self.cur_date = pytz.utc.localize(datetime.strptime(parts[-2] + ' ' + parts[-1], '%Y-%m-%d %H-%M'))
+
+            sunrise = sunset = None
+            if self.location is not None:
+                sun = Sun(self.location[0], self.location[1])
+                sunrise = sun.get_sunrise_time(self.cur_date)
+                sunset = sun.get_sunset_time(self.cur_date)
+                sunrise_s = sunrise.strftime('%H:%M')
+                sunset_s = sunset.strftime('%H:%M')
+                # magic!
+                suntime_offset = timedelta(minutes=30)
+                sunrise -= suntime_offset
+                sunset += suntime_offset
+
+            if sunrise is not None:
+                if sunrise > sunset:
+                    if sunset <= self.cur_date <= sunrise:
+                        continue
+                else:
+                    if sunrise <= self.cur_date <= sunset:
+                        continue
+
+            target_files.append(Path(root, target_fname[0]))
+
+        self._save_targets(target_files)
+        print()
+
 
 parser = argparse.ArgumentParser(description='Donwloads Himawari8 images.')
 parser.add_argument('--date',
-                    required=True,
                     help='The day used to download images, as YYYY-MM-DD')
+parser.add_argument('--targets', default=None, action='store_true',
+                    help='Creates a file with all the cached target files')
 parser.add_argument('--depth', type=int, default=20,
                     help='Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified')
 parser.add_argument('--target',
-                    help='Target region defined as "left top right bottom". ')
+                    help='Target region defined as "left top right bottom"')
 parser.add_argument('--annotated', default=False, action='store_true',
                     help='Create annotated strip images.')
 parser.add_argument('--force', default=False, action='store_true',
-                    help='Force creation of strip and target images.')
+                    help='Force creation of strip and target images')
 parser.add_argument('--location',
                     help='Location to use to get sunset/sunrise times. Specified as "latitude longitude"')
 args = parser.parse_args()
 
-date = datetime.strptime(args.date, '%Y-%m-%d')
+date = None
+if args.date is not None:
+    date = datetime.strptime(args.date, '%Y-%m-%d')
+
+if date is None and args.targets is None:
+    print('--date or --targets is required')
+    os.sys.exit(1)
+
 target = []
 if args.target is not None:
     target = [int(x) for x in args.target.split(' ')]
 location = None
 if args.location is not None:
     location = [float(x) for x in args.location.split(' ')]
+depth = args.depth
+
 downloader = Downloader(
+                'targets.txt',
                 create_annotated=args.annotated,
                 force_creation=args.force,
                 location=location)
 
-downloader.run(date, args.depth, target)
+if date is None:
+    downloader.make_targets_list(depth)
+else:
+    downloader.run(date, depth, target)
