@@ -160,7 +160,7 @@ class Chimalacatl:
                 )
                 offset = 50
                 draw.text(
-                    (tile[1] * self.size + offset, offset),
+                    (index * self.size + offset, offset),
                     f'{tile[0]},{tile[1]}',
                     fill='white'
                 )
