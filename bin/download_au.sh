@@ -11,4 +11,7 @@ source "$dir"/common.sh
 # for depth 8:
 # --target "5 2 6 5"
 
+# southern east coast (depth 16)
+# --target "12 8 13 10"
+
 python "$dir"/../chimalacatl.py --depth $depth --target "12 8 13 10" --location "$lat $lng" --date $*
