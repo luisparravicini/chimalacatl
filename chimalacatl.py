@@ -130,22 +130,20 @@ class Chimalacatl:
 
         return True
 
-    def _make_strip(self, tiles, x, annotated=False):
-        if annotated:
-            strip_type = 'annotated '
-        else:
-            strip_type = ''
-
-        strip_fname = Path(self.date_dir, 'strip_%s_%02d.jpg' % (strip_type, x))
+    def _make_strip(self, tiles, x):
+        strip_fname = Path(self.date_dir, 'strip_%02d.jpg' % x)
         if strip_fname.exists():
-            self.logger.log_grouped(f'{strip_type}strip file exists (recreate? {self.force_creation})')
+            self.logger.log_grouped(f'strip file exists (recreate? {self.force_creation})')
             if not self.force_creation:
                 return strip_fname
 
+        strip_type = ''
+        if self.create_annotated:
+            strip_type = 'annotated '
         self.logger.log_grouped(f'saving {strip_type}strip ({len(tiles)} tiles)')
         width = len(tiles) * self.size
         img = Image.new('RGB', (width, self.size))
-        if annotated:
+        if self.create_annotated:
             draw = ImageDraw.Draw(img)
         for index, tile in enumerate(tiles):
             tile_path = self._tile_fname(tile)
@@ -159,7 +157,7 @@ class Chimalacatl:
                     return None
                 else:
                     raise e
-            if annotated:
+            if self.create_annotated:
                 draw.rectangle(
                     ((index * self.size, 0), (index * self.size + self.size, self.size)),
                     width=2
@@ -288,8 +286,6 @@ class Chimalacatl:
                         all_downloaded = False
                     else:
                         strips.append(strip_fname)
-                        if self.create_annotated:
-                            self._make_strip(tiles, x, annotated=True)
 
             if all_downloaded:
                 if len(strips) > 0:
