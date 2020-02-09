@@ -166,7 +166,8 @@ class Chimalacatl:
                 draw.text(
                     (index * self.size + offset, offset),
                     f'{tile[0]},{tile[1]}',
-                    fill='white'
+                    fill='white',
+                    font=self._load_font()
                 )
         tmp_strip_fname = strip_fname.with_suffix('.tmp')
         img.save(tmp_strip_fname, format='jpeg')
@@ -178,6 +179,11 @@ class Chimalacatl:
         dstr = self.cur_date.strftime('%Y%m%d%H%M%S')
         fname = '%s%s.jpg' % (Chimalacatl.TARGET_FNAME_PREFIX, dstr)
         return Path(self.date_dir, fname)
+
+    def _load_font(self):
+        font_path = Path(os.path.dirname(__file__), 'fonts', 'Roboto-Medium.ttf')
+        font_size = 20
+        return ImageFont.truetype(str(font_path), font_size)
 
     def _make_target_image(self, strips_paths, width):
         image_fname = self._target_path()
@@ -199,15 +205,11 @@ class Chimalacatl:
         if self.show_dates:
             draw = ImageDraw.Draw(img)
             offset = 50
-            font_path = Path(os.path.dirname(__file__), 'fonts', 'Roboto-Medium.ttf')
-            font_size = 20
-            font = ImageFont.truetype(str(font_path), font_size)
-
             draw.text(
                 (offset, offset),
                 self.cur_date.strftime('%Y-%m-%d'),
                 fill='white',
-                font=font
+                font=self._load_font()
             )
 
 
