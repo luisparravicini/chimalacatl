@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime, timedelta
 from pathlib import Path
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import argparse
 from suntime import Sun, SunTimeException
 import pytz
@@ -89,11 +89,17 @@ class Log:
 class Chimalacatl:
     TARGET_FNAME_PREFIX = 'target-'
 
-    def __init__(self, targets_path, create_annotated, force_creation, location):
+    def __init__(self,
+                 targets_path,
+                 create_annotated,
+                 force_creation,
+                 location,
+                 show_dates):
         self.create_annotated = create_annotated
         self.force_creation = force_creation
         self.location = location
         self.targets_path = targets_path
+        self.show_dates = show_dates
 
     def _tile_fname(self, pos):
         return Path(self.date_dir, '%d-%d.png' % pos)
@@ -182,12 +188,30 @@ class Chimalacatl:
             if not self.force_creation:
                 return
 
-        self.logger.log_grouped(f'saving target ({len(strips_paths)} strips)')
+        sufix = ''
+        if self.show_dates:
+            sufix = ', showing dates'
+        self.logger.log_grouped(f'saving target ({len(strips_paths)} strips){sufix}')
 
         img = Image.new('RGB', (width, len(strips_paths) * self.size))
         for index, strip_path in enumerate(strips_paths):
             strip_img = Image.open(strip_path)
             img.paste(strip_img, (0, index * self.size))
+
+        if self.show_dates:
+            draw = ImageDraw.Draw(img)
+            offset = 50
+            font_path = Path(os.path.dirname(__file__), 'fonts', 'Roboto-Medium.ttf')
+            font_size = 20
+            font = ImageFont.truetype(str(font_path), font_size)
+
+            draw.text(
+                (offset, offset),
+                self.cur_date.strftime('%Y-%m-%d'),
+                fill='white',
+                font=font
+            )
+
 
         tmp_target_fname = image_fname.with_suffix('.tmp')
         img.save(tmp_target_fname, format='jpeg')
@@ -312,6 +336,8 @@ class Chimalacatl:
 parser = argparse.ArgumentParser(description='Donwloads Himawari8 images.')
 parser.add_argument('--date',
                     help='The day used to download images, as YYYY-MM-DD')
+parser.add_argument('--days', type=int, default=1,
+                    help='Amount of days to download')
 parser.add_argument('--targets', default=None, action='store_true',
                     help='Creates a file with all the cached target files')
 parser.add_argument('--depth', type=int, default=20,
@@ -320,6 +346,8 @@ parser.add_argument('--target',
                     help='Target region defined as "left top right bottom"')
 parser.add_argument('--annotated', default=False, action='store_true',
                     help='Create annotated strip images.')
+parser.add_argument('--show-dates', default=False, action='store_true',
+                    help='Show date in target images')
 parser.add_argument('--force', default=False, action='store_true',
                     help='Force creation of strip and target images')
 parser.add_argument('--location',
@@ -346,9 +374,14 @@ chimalacatl = Chimalacatl(
                 'targets.txt',
                 create_annotated=args.annotated,
                 force_creation=args.force,
-                location=location)
+                location=location,
+                show_dates=args.show_dates)
 
 if date is None:
     chimalacatl.make_targets_list(depth)
 else:
-    chimalacatl.run(date, depth, target)
+    step = timedelta(days=1)
+    end_date = date + step * args.days
+    while date <= end_date:
+        chimalacatl.run(date, depth, target)
+        date += step

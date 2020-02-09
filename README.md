@@ -28,18 +28,20 @@ will download all the images from 2020-01-01.
 All the variables can be specified as parameters to the script:
 
 ```
-usage: chimalacatl.py [-h] [--date DATE] [--targets] [--depth DEPTH] [--target TARGET] [--annotated] [--force]
-                   [--location LOCATION]
+usage: chimalacatl.py [-h] [--date DATE] [--days DAYS] [--targets] [--depth DEPTH] [--target TARGET] [--annotated]
+                      [--force] [--location LOCATION]
 
 Donwloads Himawari8 images.
 
 optional arguments:
   -h, --help           show this help message and exit
   --date DATE          The day used to download images, as YYYY-MM-DD
+  --days DAYS          Amount of days to download
   --targets            Creates a file with all the cached target files
   --depth DEPTH        Depth used (possible values: 4, 8, 16, 20). 20 is used if no value is specified
   --target TARGET      Target region defined as "left top right bottom"
   --annotated          Create annotated strip images.
+  --show-dates         Show date in target images
   --force              Force creation of strip and target images
   --location LOCATION  Location to use to get sunset/sunrise times. Specified as "latitude longitude"
 ```
